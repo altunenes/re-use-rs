@@ -1,0 +1,9 @@
+/target
+/.venv
+.DS_Store
+__pycache__/
+*.safetensors
+
+# my tests
+ours/
+*.mp4

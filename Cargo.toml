@@ -1,0 +1,20 @@
+[package]
+name = "reuse-rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["altunenes"]
+description = "Real-time speech enhancement with NVIDIA Real-time RE-USE (Mamba), in plain Rust on the CPU"
+repository = "https://github.com/altunenes/reuse-rs"
+license = "MIT OR Apache-2.0"
+keywords = ["speech-enhancement", "denoising", "mamba", "real-time", "audio"]
+categories = ["multimedia::audio", "science"]
+
+[dependencies]
+eyre = "0.6"
+hound = "3.5"
+rayon = "1.12.0"
+realfft = "3"
+safetensors = "0.8"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+matrixmultiply = "0.3"

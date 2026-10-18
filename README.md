@@ -1,0 +1,127 @@
+# reuse-rs
+
+Real-time speech enhancement in plain Rust, running NVIDIA's
+[Real-time RE-USE](https://huggingface.co/nvidia/Real-time_RE-USE) model on the CPU.
+
+- Streams one 20 ms frame at a time, faster than real time on a laptop CPU (8.4–14.7 ms per frame on an Apple M3).
+- No ONNX Runtime, no GPU, no Python. The weights load straight from NVIDIA's `model.safetensors`.
+- About 150 MB of memory.
+- Output matches a float64 PyTorch reference to 1.5e-6, as close as PyTorch's own float32 run.
+
+## Demo
+
+Each clip plays the noisy recording, then the same recording enhanced by reuse-rs (8 layers, CPU,
+streaming). Top spectrogram: noisy. Bottom: enhanced.
+
+**Noisy speech, Edinburgh (2.3 s)**
+
+
+**Speech in heavy city noise (10 s)**
+
+
+## Setup
+
+Download the weights (54 MB):
+
+```sh
+mkdir -p realtime_reuse
+curl -L -o realtime_reuse/model.safetensors \
+  https://huggingface.co/nvidia/Real-time_RE-USE/resolve/main/model.safetensors
+```
+
+Enhance a 16 kHz mono wav:
+
+```sh
+cargo run --release --example enhance -- noisy.wav clean.wav 8
+```
+
+The last argument is the number of Mamba layers, 3–12. Fewer layers is faster, more is cleaner.
+Convert other audio with e.g. `ffmpeg -i in.mp4 -ac 1 -ar 16000 noisy.wav`.
+
+## Library
+
+```rust
+use reuse_rs::{audio, Streaming};
+
+let mut model = Streaming::load("realtime_reuse/model.safetensors", 8)?;
+let (wav, _) = audio::load_wav("noisy.wav")?;
+let (mag, pha) = audio::stft(&wav, 640, 320, 640)?;
+for t in 0..mag[0].len() {
+    let m: Vec<f32> = mag.iter().map(|row| row[t].ln_1p()).collect();
+    let p: Vec<f32> = pha.iter().map(|row| row[t]).collect();
+    let (clean_mag, clean_phase) = model.step(&m, &p);
+}
+```
+
+`Streaming::step` takes one STFT frame (log1p magnitude and phase, 321 bins at 16 kHz) and
+returns the enhanced frame. The model keeps its own state between calls; `reset()` starts a new stream.
+`examples/enhance.rs` shows the full wav-to-wav path, including the inverse STFT.
+
+## Benchmarks
+
+Apple M3 (8 cores, 16 GB), macOS 26.5, idle machine, 16 kHz mono.
+
+### Per frame
+
+12 s of speech, look-ahead 0. A frame is 20 ms of audio, so under 20 ms per frame keeps up with a live stream.
+
+| Layers | reuse-rs (CPU) | ONNX Runtime (WebGPU) |
+|---|---|---|
+| 4 | **8.4 ms** (2.4× real time) | 16.9 ms (1.2×) |
+| 6 | **11.5 ms** (1.7×) | 17.4 ms (1.15×) |
+| 8 | **14.7 ms** (1.4×) | 20.6 ms (0.97×) |
+
+The ONNX Runtime column is the same model exported to ONNX (Mamba scans as
+`com.microsoft.LinearAttention`) and run through the `ort` crate with WebGPU. On CPU, ONNX Runtime
+took about 70 ms per frame.
+
+### Real recordings
+
+Three test recordings, enhanced end to end (STFT, model, inverse STFT). Speed is the real-time
+factor (above 1× is faster than real time).
+
+| Recording | Length | 4 layers | 6 layers | 8 layers | ONNX Runtime WebGPU, 8 layers |
+|---|---|---|---|---|---|
+| Noisy speech, Edinburgh | 2.3 s | 2.2× | 1.6× | 1.3× | 0.85× |
+| Speech in heavy city noise | 10 s | 2.4× | 1.75× | 1.4× | 0.96× |
+| Six speakers | 40.7 s | 2.4× | 1.75× | 1.35× | 0.98× |
+| Peak memory | | 140–150 MB | 145–155 MB | 150–165 MB | 410–440 MB |
+
+NVIDIA's offline model (`nvidia/RE-USE`, 30 bidirectional layers) was also tried through ONNX
+Runtime. It is NVIDIA's highest-quality model, but ran at 0.19–0.33× real time on WebGPU (0.10× on CPU) with
+3.3–3.9 GB of memory, so it is not included.
+
+Run the benchmark yourself:
+
+```sh
+cargo run --release --example bench -- noisy.wav 8 12
+```
+
+## How it works
+
+Every 20 ms the input gets one STFT frame (n_fft 640, hop 320 at 16 kHz). The model is NVIDIA's
+streaming SEMamba: a causal dense conv encoder, then per layer a causal time Mamba (one state
+update per frequency bin) and a bidirectional Mamba across frequency, then magnitude and phase
+decoders. All of it is written by hand in `src/`:
+
+- Convolutions are im2col plus one matrix multiply (Accelerate on macOS, `matrixmultiply` elsewhere).
+- The Mamba selective scan uses fixed 16-state arrays and a polynomial `exp`, so the compiler vectorizes it.
+- Scans run across channels in parallel with `rayon`.
+
+## Limitations
+
+- Only 16 kHz input and look-ahead 0 have been tested. NVIDIA's model supports 8–48 kHz and up to
+  2 frames of look-ahead.
+- Speed has only been measured on an Apple M3. Other platforms use `matrixmultiply` instead of
+  Accelerate and will differ.
+
+## License
+
+The code is MIT or Apache-2.0. The model weights are NVIDIA's, under the
+[NVIDIA One-Way Noncommercial License](https://github.com/NVlabs/HMAR/blob/main/LICENSE): research and
+non-commercial use only.
+
+Model papers:
+
+- [One Model, Many Latencies: Universal Speech Enhancement for Diverse Real-Time Applications](http://arxiv.org/abs/2606.25621) (IEEE SLT 2026)
+- [Rethinking Training Targets, Architectures and Data Quality for Universal Speech Enhancement](https://arxiv.org/abs/2603.02641) (NeurIPS 2026)
