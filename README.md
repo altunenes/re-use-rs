@@ -57,21 +57,18 @@ Convert other audio with e.g. `ffmpeg -i in.mp4 -ac 1 -ar 16000 noisy.wav`.
 ## Library
 
 ```rust
-use reuse_rs::{audio, Streaming};
+use reuse_rs::Denoiser;
 
-let mut model = Streaming::load("realtime_reuse/model.safetensors", 8)?;
-let (wav, _) = audio::load_wav("noisy.wav")?;
-let (mag, pha) = audio::stft(&wav, 640, 320, 640)?;
-for t in 0..mag[0].len() {
-    let m: Vec<f32> = mag.iter().map(|row| row[t].ln_1p()).collect();
-    let p: Vec<f32> = pha.iter().map(|row| row[t]).collect();
-    let (clean_mag, clean_phase) = model.step(&m, &p);
-}
+let mut denoiser = Denoiser::load("realtime_reuse/model.safetensors", 8)?;
+// Feed 16 kHz mono samples in whatever chunks they arrive.
+let clean = denoiser.process(&noisy_chunk)?;
+// At the end of the stream:
+let rest = denoiser.flush()?;
 ```
 
-`Streaming::step` takes one STFT frame (log1p magnitude and phase, 321 bins at 16 kHz) and
-returns the enhanced frame. The model keeps its own state between calls; `reset()` starts a new stream.
-`examples/enhance.rs` shows the full wav-to-wav path, including the inverse STFT.
+`process` returns the enhanced samples that are ready, 320 at a time (20 ms), delayed by
+`Denoiser::LATENCY` (320 samples). For frame-level control, `Streaming` takes one STFT frame
+(log1p magnitude and phase, 321 bins) per call, and `audio` has the matching STFT and wav helpers.
 
 ## Benchmarks
 

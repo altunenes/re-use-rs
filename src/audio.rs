@@ -3,7 +3,7 @@ use realfft::RealFftPlanner;
 use std::f32::consts::PI;
 
 /// Periodic Hann window of length `n`, like `torch.hann_window(n)`.
-fn hann_window(n: usize) -> Vec<f32> {
+pub(crate) fn hann_window(n: usize) -> Vec<f32> {
     (0..n)
         .map(|i| 0.5 - 0.5 * (2.0 * PI * i as f32 / n as f32).cos())
         .collect()
