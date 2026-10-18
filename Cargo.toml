@@ -1,6 +1,6 @@
 [package]
 name = "reuse-rs"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["altunenes"]
 description = "Real-time speech enhancement with NVIDIA Real-time RE-USE (Mamba), in plain Rust on the CPU"
@@ -14,7 +14,7 @@ eyre = "0.6"
 hound = "3.5"
 rayon = "1.12.0"
 realfft = "3"
-safetensors = "0.8"
+safetensors = ">=0.7, <0.9"
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 matrixmultiply = "0.3"
