@@ -1,5 +1,10 @@
 # reuse-rs
 
+[![crates.io](https://img.shields.io/crates/v/reuse-rs.svg)](https://crates.io/crates/reuse-rs)
+[![docs.rs](https://img.shields.io/docsrs/reuse-rs)](https://docs.rs/reuse-rs)
+[![CI](https://github.com/altunenes/re-use-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/altunenes/re-use-rs/actions/workflows/ci.yml)
+
+
 Real-time speech enhancement in plain Rust, running NVIDIA's
 [Real-time RE-USE](https://huggingface.co/nvidia/Real-time_RE-USE) model on the CPU.
 
