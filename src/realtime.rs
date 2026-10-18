@@ -65,12 +65,25 @@ impl Decoder {
         Ok(Self {
             dense: DenseBlock::load(w, &format!("{prefix}.dense_block"))?,
             up1: StreamConv::load(w, &format!("{prefix}.up_conv1.0.conv"), 1, 1, 1)?,
-            up1_act: NormAct::load(w, &format!("{prefix}.up_conv1.1"), &format!("{prefix}.up_conv1.2"))?,
+            up1_act: NormAct::load(
+                w,
+                &format!("{prefix}.up_conv1.1"),
+                &format!("{prefix}.up_conv1.2"),
+            )?,
             up2: StreamConv::load_time_last(w, &format!("{prefix}.up_conv2.0.conv"))?,
-            up2_act: NormAct::load(w, &format!("{prefix}.up_conv2.1"), &format!("{prefix}.up_conv2.2"))?,
+            up2_act: NormAct::load(
+                w,
+                &format!("{prefix}.up_conv2.1"),
+                &format!("{prefix}.up_conv2.2"),
+            )?,
             heads: heads
                 .iter()
-                .map(|h| Ok((w.get(&format!("{prefix}.{h}.weight"))?, w.get(&format!("{prefix}.{h}.bias"))?[0])))
+                .map(|h| {
+                    Ok((
+                        w.get(&format!("{prefix}.{h}.weight"))?,
+                        w.get(&format!("{prefix}.{h}.bias"))?[0],
+                    ))
+                })
                 .collect::<Result<_>>()?,
         })
     }
@@ -103,7 +116,10 @@ impl Decoder {
             .iter()
             .map(|(weight, bias)| {
                 let mut out = vec![*bias; positions];
-                gemm(false, false, 1, positions, channels, weight, channels, &z, positions, 1.0, &mut out, positions);
+                gemm(
+                    false, false, 1, positions, channels, weight, channels, &z, positions, 1.0,
+                    &mut out, positions,
+                );
                 out
             })
             .collect()
@@ -126,7 +142,10 @@ impl Streaming {
     /// Loads the first `layers` TF-Mamba blocks (3–12) and the decoder pair trained to exit there.
     pub fn load(path: impl AsRef<Path>, layers: usize) -> Result<Self> {
         let w = Weights::load(path)?;
-        eyre::ensure!((3..=12).contains(&layers), "layers must be 3..=12, got {layers}");
+        eyre::ensure!(
+            (3..=12).contains(&layers),
+            "layers must be 3..=12, got {layers}"
+        );
         let blocks = (0..layers)
             .map(|i| {
                 Ok(Block {
@@ -138,13 +157,25 @@ impl Streaming {
         let exit = layers - 1;
         Ok(Self {
             encoder_in: StreamConv::load(&w, "dense_encoder.dense_conv_1_1.0", 1, 1, 1)?,
-            encoder_in_act: NormAct::load(&w, "dense_encoder.dense_conv_1_1.1", "dense_encoder.dense_conv_1_1.2")?,
+            encoder_in_act: NormAct::load(
+                &w,
+                "dense_encoder.dense_conv_1_1.1",
+                "dense_encoder.dense_conv_1_1.2",
+            )?,
             encoder_dense: DenseBlock::load(&w, "dense_encoder.dense_block")?,
             encoder_out: StreamConv::load(&w, "dense_encoder.dense_conv_2.0", 1, 0, 2)?,
-            encoder_out_act: NormAct::load(&w, "dense_encoder.dense_conv_2.1", "dense_encoder.dense_conv_2.2")?,
+            encoder_out_act: NormAct::load(
+                &w,
+                "dense_encoder.dense_conv_2.1",
+                "dense_encoder.dense_conv_2.2",
+            )?,
             blocks,
             mag: Decoder::load(&w, &format!("mask_decoder_list.{exit}"), &["final_conv"])?,
-            pha: Decoder::load(&w, &format!("phase_decoder_list.{exit}"), &["phase_conv_r", "phase_conv_i"])?,
+            pha: Decoder::load(
+                &w,
+                &format!("phase_decoder_list.{exit}"),
+                &["phase_conv_r", "phase_conv_i"],
+            )?,
         })
     }
 
@@ -186,7 +217,11 @@ impl Streaming {
         let (mag_dec, pha_dec) = (&mut self.mag, &mut self.pha);
         let (mut mag, pha) = rayon::join(|| mag_dec.step(&h), || pha_dec.step(&h));
         let mag = mag.swap_remove(0);
-        let phase = pha[0].iter().zip(&pha[1]).map(|(r, i)| i.atan2(*r)).collect::<Vec<_>>();
+        let phase = pha[0]
+            .iter()
+            .zip(&pha[1])
+            .map(|(r, i)| i.atan2(*r))
+            .collect::<Vec<_>>();
         (mag[..bins].to_vec(), phase[..bins].to_vec())
     }
 }

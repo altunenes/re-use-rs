@@ -1,4 +1,4 @@
-use eyre::{Result, eyre};
+use eyre::{eyre, Result};
 use realfft::RealFftPlanner;
 use std::f32::consts::PI;
 

@@ -26,7 +26,13 @@ pub struct StreamConv {
 
 impl StreamConv {
     /// `prefix.weight` is `[cout][cin][taps][kf]`.
-    pub fn load(w: &Weights, prefix: &str, dilation: usize, freq_pad: usize, stride: usize) -> Result<Self> {
+    pub fn load(
+        w: &Weights,
+        prefix: &str,
+        dilation: usize,
+        freq_pad: usize,
+        stride: usize,
+    ) -> Result<Self> {
         let shape = w.shape(&format!("{prefix}.weight"))?.to_vec();
         Ok(Self {
             weight: w.get(&format!("{prefix}.weight"))?,
@@ -70,7 +76,8 @@ impl StreamConv {
             for ci in 0..self.cin {
                 let src = &frame[ci * freq..(ci + 1) * freq];
                 for k in 0..self.kf {
-                    let row = &mut cols[((ci * self.taps + tap) * self.kf + k) * freq_out..][..freq_out];
+                    let row =
+                        &mut cols[((ci * self.taps + tap) * self.kf + k) * freq_out..][..freq_out];
                     for (fo, out) in row.iter_mut().enumerate() {
                         let fi = (fo * self.stride + k) as isize - self.freq_pad as isize;
                         if fi >= 0 && (fi as usize) < freq {
@@ -81,7 +88,20 @@ impl StreamConv {
             }
         }
         let mut out = vec![0f32; self.cout * freq_out];
-        gemm(false, false, self.cout, freq_out, rows, &self.weight, rows, &cols, freq_out, 0.0, &mut out, freq_out);
+        gemm(
+            false,
+            false,
+            self.cout,
+            freq_out,
+            rows,
+            &self.weight,
+            rows,
+            &cols,
+            freq_out,
+            0.0,
+            &mut out,
+            freq_out,
+        );
         add_channel_bias(&mut out, &self.bias);
         if history > 0 {
             self.cache.pop_front();
@@ -169,7 +189,11 @@ impl Linear {
         let shape = w.shape(&format!("{prefix}.weight"))?.to_vec();
         Ok(Self {
             weight: w.get(&format!("{prefix}.weight"))?,
-            bias: if bias { Some(w.get(&format!("{prefix}.bias"))?) } else { None },
+            bias: if bias {
+                Some(w.get(&format!("{prefix}.bias"))?)
+            } else {
+                None
+            },
             out: shape[0],
             inp: shape[1],
         })
@@ -178,7 +202,20 @@ impl Linear {
     /// `x` holds `rows` rows of `inp` values, each starting `ld` apart.
     pub fn forward_strided(&self, x: &[f32], rows: usize, ld: usize) -> Vec<f32> {
         let mut y = vec![0f32; rows * self.out];
-        gemm(false, true, rows, self.out, self.inp, x, ld, &self.weight, self.inp, 0.0, &mut y, self.out);
+        gemm(
+            false,
+            true,
+            rows,
+            self.out,
+            self.inp,
+            x,
+            ld,
+            &self.weight,
+            self.inp,
+            0.0,
+            &mut y,
+            self.out,
+        );
         if let Some(b) = &self.bias {
             for row in y.chunks_exact_mut(self.out) {
                 row.iter_mut().zip(b).for_each(|(v, b)| *v += b);
@@ -202,7 +239,14 @@ fn state16(x: &[f32]) -> &[f32; STATE] {
 /// One selective-scan update of a channel: `s = exp(Δ·A)·s + Δx·B`, returns `C·s`.
 /// The exps, the update and the sum are separate loops so each one vectorizes.
 #[inline(always)]
-fn scan16(s: &mut [f32; STATE], a: &[f32; STATE], delta: f32, dx: f32, b: &[f32; STATE], c: &[f32; STATE]) -> f32 {
+fn scan16(
+    s: &mut [f32; STATE],
+    a: &[f32; STATE],
+    delta: f32,
+    dx: f32,
+    b: &[f32; STATE],
+    c: &[f32; STATE],
+) -> f32 {
     let mut decay = [0f32; STATE];
     for n in 0..STATE {
         decay[n] = fast_exp(delta * a[n]);
@@ -241,7 +285,11 @@ impl Mamba {
         let a_shape = w.shape(&format!("{prefix}.A_log"))?.to_vec();
         let conv_shape = w.shape(&format!("{prefix}.conv1d.weight"))?.to_vec();
         let dt_proj = Linear::load(w, &format!("{prefix}.dt_proj"), true)?;
-        eyre::ensure!(a_shape[1] == STATE, "{prefix}: d_state {} is not {STATE}", a_shape[1]);
+        eyre::ensure!(
+            a_shape[1] == STATE,
+            "{prefix}: d_state {} is not {STATE}",
+            a_shape[1]
+        );
         Ok(Self {
             in_proj: Linear::load(w, &format!("{prefix}.in_proj"), false)?,
             conv_w: w.get(&format!("{prefix}.conv1d.weight"))?,
@@ -283,7 +331,13 @@ impl Mamba {
     /// One state update and output, for each of `rows` independent sequences.
     /// `x` is `rows × d_model`; `conv_state` is `rows × d_inner × d_conv`; `ssm_state` is
     /// `rows × d_inner × d_state`.
-    pub fn step(&self, x: &[f32], rows: usize, conv_state: &mut [f32], ssm_state: &mut [f32]) -> Vec<f32> {
+    pub fn step(
+        &self,
+        x: &[f32],
+        rows: usize,
+        conv_state: &mut [f32],
+        ssm_state: &mut [f32],
+    ) -> Vec<f32> {
         let (di, ds, dc) = (self.d_inner, self.d_state, self.d_conv);
         let xz = self.in_proj.forward(x, rows);
         let mut xc = vec![0f32; rows * di];
@@ -309,7 +363,14 @@ impl Mamba {
                 for c in 0..di {
                     let delta = dt[r * di + c];
                     let s: &mut [f32; STATE] = (&mut state[c * ds..][..ds]).try_into().unwrap();
-                    y[c] = scan16(s, state16(&self.a[c * ds..]), delta, delta * xc[r * di + c], b, cm);
+                    y[c] = scan16(
+                        s,
+                        state16(&self.a[c * ds..]),
+                        delta,
+                        delta * xc[r * di + c],
+                        b,
+                        cm,
+                    );
                 }
             });
         self.finish(y, &xc, &xz, rows)
@@ -348,8 +409,14 @@ impl Mamba {
                     let cm = state16(&dbl[l * nd + self.dt_rank + ds..]);
                     for (j, c) in channels.clone().enumerate() {
                         let delta = dt[l * di + c];
-                        out[l * width + j] =
-                            scan16(&mut state[j], state16(&self.a[c * ds..]), delta, delta * xc[l * di + c], b, cm);
+                        out[l * width + j] = scan16(
+                            &mut state[j],
+                            state16(&self.a[c * ds..]),
+                            delta,
+                            delta * xc[l * di + c],
+                            b,
+                            cm,
+                        );
                     }
                 }
                 out
@@ -374,7 +441,10 @@ pub struct LayerNorm {
 
 impl LayerNorm {
     pub fn load(w: &Weights, prefix: &str) -> Result<Self> {
-        Ok(Self { weight: w.get(&format!("{prefix}.weight"))?, bias: w.get(&format!("{prefix}.bias"))? })
+        Ok(Self {
+            weight: w.get(&format!("{prefix}.weight"))?,
+            bias: w.get(&format!("{prefix}.bias"))?,
+        })
     }
 
     pub fn apply(&self, x: &mut [f32]) {
@@ -404,7 +474,10 @@ impl BiMambaBlock {
     pub fn forward(&self, x: &[f32], len: usize) -> Vec<f32> {
         let dm = x.len() / len;
         let reversed: Vec<f32> = x.chunks_exact(dm).rev().flatten().copied().collect();
-        let (fw, bw) = rayon::join(|| self.forward.sequence(x, len), || self.backward.sequence(&reversed, len));
+        let (fw, bw) = rayon::join(
+            || self.forward.sequence(x, len),
+            || self.backward.sequence(&reversed, len),
+        );
         let mut cat = vec![0f32; len * 2 * dm];
         for l in 0..len {
             let row = &mut cat[l * 2 * dm..][..2 * dm];

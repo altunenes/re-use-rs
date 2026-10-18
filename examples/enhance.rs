@@ -5,7 +5,7 @@
 //! `layers` is 3–12 (default 8; fewer is faster). The model defaults to
 //! realtime_reuse/model.safetensors.
 
-use reuse_rs::{Streaming, audio};
+use reuse_rs::{audio, Streaming};
 use std::time::Instant;
 
 const SAMPLE_RATE: u32 = 16000;
@@ -25,18 +25,30 @@ fn clear_silent_frames(mag: &mut [Vec<f32>]) {
 
 fn main() -> eyre::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    eyre::ensure!(args.len() >= 3, "usage: enhance <in.wav> <out.wav> [layers] [model.safetensors]");
+    eyre::ensure!(
+        args.len() >= 3,
+        "usage: enhance <in.wav> <out.wav> [layers] [model.safetensors]"
+    );
     let (input, output) = (&args[1], &args[2]);
     let layers: usize = args.get(3).and_then(|v| v.parse().ok()).unwrap_or(8);
-    let model = args.get(4).map(String::as_str).unwrap_or("realtime_reuse/model.safetensors");
+    let model = args
+        .get(4)
+        .map(String::as_str)
+        .unwrap_or("realtime_reuse/model.safetensors");
 
     let (wav, sr) = audio::load_wav(input)?;
-    eyre::ensure!(sr == SAMPLE_RATE, "expected {SAMPLE_RATE} Hz mono, got {sr} Hz");
+    eyre::ensure!(
+        sr == SAMPLE_RATE,
+        "expected {SAMPLE_RATE} Hz mono, got {sr} Hz"
+    );
     let seconds = wav.len() as f32 / sr as f32;
 
     let start = Instant::now();
     let mut stream = Streaming::load(model, layers)?;
-    println!("{layers} layers loaded in {:.2} s", start.elapsed().as_secs_f32());
+    println!(
+        "{layers} layers loaded in {:.2} s",
+        start.elapsed().as_secs_f32()
+    );
 
     let start = Instant::now();
     let (mag, pha) = audio::stft(&wav, N_FFT, HOP, N_FFT)?;
@@ -67,7 +79,10 @@ fn main() -> eyre::Result<()> {
 
     let took = start.elapsed().as_secs_f32();
     println!("{frames} frames, slowest frame {slowest:.1} ms (budget 20 ms)");
-    println!("{seconds:.1} s of audio in {took:.1} s ({:.2}x real time)", seconds / took);
+    println!(
+        "{seconds:.1} s of audio in {took:.1} s ({:.2}x real time)",
+        seconds / took
+    );
     audio::save_wav(output, &enhanced, sr)?;
     println!("wrote {output}");
     Ok(())

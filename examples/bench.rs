@@ -5,16 +5,22 @@
 //!
 //! Each frame is 20 ms of audio, so a median under 20 ms keeps up with a live stream.
 
-use reuse_rs::{Streaming, audio};
+use reuse_rs::{audio, Streaming};
 use std::time::Instant;
 
 fn main() -> eyre::Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    eyre::ensure!(args.len() >= 2, "usage: bench <in.wav> [layers] [seconds] [model.safetensors]");
+    eyre::ensure!(
+        args.len() >= 2,
+        "usage: bench <in.wav> [layers] [seconds] [model.safetensors]"
+    );
     let input = &args[1];
     let layers: usize = args.get(2).and_then(|v| v.parse().ok()).unwrap_or(8);
     let seconds: f32 = args.get(3).and_then(|v| v.parse().ok()).unwrap_or(12.0);
-    let model = args.get(4).map(String::as_str).unwrap_or("realtime_reuse/model.safetensors");
+    let model = args
+        .get(4)
+        .map(String::as_str)
+        .unwrap_or("realtime_reuse/model.safetensors");
 
     let (wav, sr) = audio::load_wav(input)?;
     eyre::ensure!(sr == 16000, "expected 16 kHz audio, got {sr}");

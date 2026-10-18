@@ -17,8 +17,16 @@ pub fn gemm(
     c: &mut [f32],
     ldc: usize,
 ) {
-    let a_len = if trans_a { (k - 1) * lda + m } else { (m - 1) * lda + k };
-    let b_len = if trans_b { (n - 1) * ldb + k } else { (k - 1) * ldb + n };
+    let a_len = if trans_a {
+        (k - 1) * lda + m
+    } else {
+        (m - 1) * lda + k
+    };
+    let b_len = if trans_b {
+        (n - 1) * ldb + k
+    } else {
+        (k - 1) * ldb + n
+    };
     assert!(a.len() >= a_len && b.len() >= b_len && c.len() >= (m - 1) * ldc + n);
     imp::gemm(trans_a, trans_b, m, n, k, a, lda, b, ldb, beta, c, ldc);
 }
@@ -177,9 +185,17 @@ pub fn silu(x: f32) -> f32 {
 pub fn softplus(x: f32) -> f32 {
     let y = fast_exp(-x.abs());
     let u = 1.0 + y;
-    let log1p = if u == 1.0 { y } else { fast_ln(u) * y / (u - 1.0) };
+    let log1p = if u == 1.0 {
+        y
+    } else {
+        fast_ln(u) * y / (u - 1.0)
+    };
     let soft = x.max(0.0) + log1p;
-    if x > 20.0 { x } else { soft }
+    if x > 20.0 {
+        x
+    } else {
+        soft
+    }
 }
 
 /// LayerNorm over the last dimension of `rows × dim` data (eps 1e-5).
@@ -195,7 +211,13 @@ pub fn layer_norm_rows(x: &mut [f32], dim: usize, weight: &[f32], bias: &[f32]) 
 }
 
 /// LayerNorm over channels of channel-major `[channels][positions]` data, then per-channel PReLU.
-pub fn layer_norm_prelu_channels(x: &mut [f32], channels: usize, weight: &[f32], bias: &[f32], prelu: &[f32]) {
+pub fn layer_norm_prelu_channels(
+    x: &mut [f32],
+    channels: usize,
+    weight: &[f32],
+    bias: &[f32],
+    prelu: &[f32],
+) {
     let positions = x.len() / channels;
     let mut mean = vec![0f32; positions];
     let mut var = vec![0f32; positions];
@@ -210,7 +232,8 @@ pub fn layer_norm_prelu_channels(x: &mut [f32], channels: usize, weight: &[f32],
             *s += (v - m) * (v - m);
         }
     }
-    var.iter_mut().for_each(|s| *s = 1.0 / (*s / channels as f32 + 1e-5).sqrt());
+    var.iter_mut()
+        .for_each(|s| *s = 1.0 / (*s / channels as f32 + 1e-5).sqrt());
     for (c, row) in x.chunks_exact_mut(positions).enumerate() {
         let (w, b, a) = (weight[c], bias[c], prelu[c]);
         for ((v, m), inv) in row.iter_mut().zip(&mean).zip(&var) {
@@ -266,7 +289,11 @@ mod tests {
         let mut worst = 0f32;
         let mut x = -30.0f32;
         while x < 30.0 {
-            let exact = if x > 20.0 { x } else { (x as f64).exp().ln_1p() as f32 };
+            let exact = if x > 20.0 {
+                x
+            } else {
+                (x as f64).exp().ln_1p() as f32
+            };
             worst = worst.max((softplus(x) - exact).abs() / exact.max(1e-3));
             x += 0.0071;
         }

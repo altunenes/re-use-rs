@@ -123,8 +123,9 @@ decoders. All of it is written by hand in `src/`:
 
 - Only 16 kHz input and look-ahead 0 have been tested. NVIDIA's model supports 8–48 kHz and up to
   2 frames of look-ahead.
-- Speed has only been measured on an Apple M3. Other platforms use `matrixmultiply` instead of
-  Accelerate and will differ.
+- Speed has only been measured on an Apple M3. Other platforms use the `matrixmultiply` crate instead
+  of Accelerate: on the same M3 that path takes 21.4 ms per frame at 8 layers, so 4–6 layers is the
+  safer choice there.
 
 ## License
 
