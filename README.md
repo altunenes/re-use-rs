@@ -10,14 +10,25 @@ Real-time speech enhancement in plain Rust, running NVIDIA's
 
 ## Demo
 
-Each clip plays the noisy recording, then the same recording enhanced by reuse-rs (8 layers, CPU,
-streaming). Top spectrogram: noisy. Bottom: enhanced.
+The same recordings before and after reuse-rs (8 layers, CPU, streaming). The spectrogram fills in as the audio plays.
 
-**Noisy speech, Edinburgh (2.3 s)**
-
-
-**Speech in heavy city noise (10 s)**
-
+<table>
+  <tr>
+    <th></th>
+    <th>Noisy</th>
+    <th>Enhanced (reuse-rs, 8 layers, CPU)</th>
+  </tr>
+  <tr>
+    <td><b>Edinburgh</b><br>2.3 s</td>
+    <td><video src="https://github.com/user-attachments/assets/f559d4c9-0bf3-41de-b04f-b34af7d2cc2e" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/4afca7ce-57d5-4e0b-b0d8-df6addc5a629" controls width="320"></video></td>
+  </tr>
+  <tr>
+    <td><b>Heavy city noise</b><br>10 s</td>
+    <td><video src="https://github.com/user-attachments/assets/0a73e729-f088-420d-8108-399023dd1639" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/221564f6-6bcc-4c82-9e41-726d1dd076c6" controls width="320"></video></td>
+  </tr>
+</table>
 
 ## Setup
 
