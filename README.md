@@ -77,8 +77,7 @@ But in math perspective, the outputs are close when measured too. Subtracting on
 | 8 vs 6 layers | 18.6 dB | 18.4 dB | 20.3 dB | 21.7 dB |
 | 6 vs 4 layers | 22.8 dB | 23.0 dB | 21.2 dB | 21.0 dB |
 
-19 dB down is about 1% of the energy. There is no clean original of this recording, so this shows
-how much the outputs differ, not which one is cleaner.
+19 dB down is about 1% of the energy, so the three outputs are almost the same.
 
 ## Setup
 
