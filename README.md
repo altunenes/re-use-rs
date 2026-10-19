@@ -45,6 +45,41 @@ The same recordings before and after reuse-rs (8 layers, CPU, streaming). The sp
   </tr>
 </table>
 
+### Fewer layers
+
+The heavy city noise recording with 4, 6 and 8 layers. 4 layers is about 1.75× faster than 8 (see
+[Benchmarks](#benchmarks)), and I could not hear a difference between them (maybe you can lol).
+
+<table>
+  <tr>
+    <th>Noisy</th>
+    <th>4 layers</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/0a73e729-f088-420d-8108-399023dd1639" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/c76cc9f1-d124-4517-92aa-39d354625707" controls width="320"></video></td>
+  </tr>
+  <tr>
+    <th>6 layers</th>
+    <th>8 layers</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/66f7025e-5f62-447c-9126-2504c98dd62c" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/956a90b0-fab8-4e55-808e-5160e3b39f67" controls width="320"></video></td>
+  </tr>
+</table>
+
+But in math perspective, the outputs are close when measured too. Subtracting one output from the other leaves a difference this far below the enhanced speech:
+
+| | Whole signal | Below 1 kHz | 1–4 kHz | Above 4 kHz |
+|---|---|---|---|---|
+| 8 vs 4 layers | 19.2 dB | 19.2 dB | 19.0 dB | 19.3 dB |
+| 8 vs 6 layers | 18.6 dB | 18.4 dB | 20.3 dB | 21.7 dB |
+| 6 vs 4 layers | 22.8 dB | 23.0 dB | 21.2 dB | 21.0 dB |
+
+19 dB down is about 1% of the energy. There is no clean original of this recording, so this shows
+how much the outputs differ, not which one is cleaner.
+
 ## Setup
 
 Download the weights (54 MB):
@@ -61,7 +96,8 @@ Enhance a 16 kHz mono wav:
 cargo run --release --example enhance -- noisy.wav clean.wav 8
 ```
 
-The last argument is the number of Mamba layers, 3–12. Fewer layers is faster, more is cleaner.
+The last argument is the number of Mamba layers, 3–12. Fewer layers is faster (see
+[Fewer layers](#fewer-layers)).
 Convert other audio with e.g. `ffmpeg -i in.mp4 -ac 1 -ar 16000 noisy.wav`.
 
 ## Library
@@ -75,6 +111,12 @@ let clean = denoiser.process(&noisy_chunk)?;
 // At the end of the stream:
 let rest = denoiser.flush()?;
 ```
+
+The second argument of `load` is the number of Mamba layers (3–12). Every frame passes through each
+layer, so fewer layers is faster: on an Apple M3, 4 layers take 8.4 ms per frame and 8 layers take
+14.7 ms. The model was trained to stop after any of these layer counts, and the output changes
+little between them (see [Fewer layers](#fewer-layers)), so 4 layers is a good choice when speed
+matters.
 
 `process` returns the enhanced samples that are ready, 320 at a time (20 ms), delayed by
 `Denoiser::LATENCY` (320 samples). For frame-level control, `Streaming` takes one STFT frame
@@ -100,15 +142,16 @@ took about 70 ms per frame.
 
 ### Real recordings
 
-Three test recordings, enhanced end to end (STFT, model, inverse STFT). Speed is the real-time
-factor (above 1× is faster than real time).
+Time to enhance a whole recording (STFT, model, inverse STFT). Less time is faster. In brackets is
+the speed compared to real time: 2× means 10 s of audio is done in 5 s. Below 1× is slower than
+real time, so it cannot keep up with a live stream.
 
-| Recording | Length | 4 layers | 6 layers | 8 layers | ONNX Runtime WebGPU, 8 layers |
-|---|---|---|---|---|---|
-| Noisy speech, Edinburgh | 2.3 s | 2.2× | 1.6× | 1.3× | 0.85× |
-| Speech in heavy city noise | 10 s | 2.4× | 1.75× | 1.4× | 0.96× |
-| Six speakers | 40.7 s | 2.4× | 1.75× | 1.35× | 0.98× |
-| Peak memory | | 140–150 MB | 145–155 MB | 150–165 MB | 410–440 MB |
+| Audio length | 4 layers | 6 layers | 8 layers | ONNX Runtime WebGPU, 8 layers |
+|---|---|---|---|---|
+| 2.3 s | **1.0 s** (2.2×) | 1.4 s (1.6×) | 1.8 s (1.3×) | 2.7 s (0.85×) |
+| 10 s | **4.2 s** (2.4×) | 5.7 s (1.75×) | 7.1 s (1.4×) | 10.4 s (0.96×) |
+| 40.7 s | **17.0 s** (2.4×) | 23.3 s (1.75×) | 30.1 s (1.35×) | 41.5 s (0.98×) |
+| Peak memory | 140–150 MB | 145–155 MB | 150–165 MB | 410–440 MB |
 
 NVIDIA's offline model (`nvidia/RE-USE`, 30 bidirectional layers) was also tried through ONNX
 Runtime. It is NVIDIA's highest-quality model, but ran at 0.19–0.33× real time on WebGPU (0.10× on CPU) with

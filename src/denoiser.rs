@@ -46,7 +46,10 @@ impl Denoiser {
     /// Delay between an input sample and its enhanced output, in samples (20 ms).
     pub const LATENCY: usize = HOP;
 
-    /// Loads the model with `layers` Mamba layers (3–12; fewer is faster).
+    /// Loads the model with `layers` Mamba layers (3–12).
+    ///
+    /// Fewer layers are faster, because each frame passes through every layer. The model was
+    /// trained to stop after any of these layer counts, so every choice gives usable output.
     pub fn load(path: impl AsRef<Path>, layers: usize) -> Result<Self> {
         Ok(Self::new(Streaming::load(path, layers)?))
     }
