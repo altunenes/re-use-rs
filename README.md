@@ -47,37 +47,48 @@ The same recordings before and after reuse-rs (8 layers, CPU, streaming). The sp
 
 ### Fewer layers
 
-The heavy city noise recording with 4, 6 and 8 layers. 4 layers is about 1.75× faster than 8 (see
-[Benchmarks](#benchmarks)), and I could not hear a difference between them (maybe you can lol).
+A recording from [VoiceBank-DEMAND](https://huggingface.co/datasets/JacobLinCool/VoiceBank-DEMAND-16k)
+(11.8 s), which comes with the clean original, enhanced with 4, 6 and 8 layers. 4 layers is about
+1.75× faster than 8 (see [Benchmarks](#benchmarks)), and I could not hear a difference between them
+(maybe you can lol).
 
 <table>
   <tr>
+    <th>Original (clean)</th>
     <th>Noisy</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/d4e41ed9-7eeb-4183-bc2e-433a9baa1847" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/2e77ec05-1820-4a09-a645-bb14e9da8b91" controls width="320"></video></td>
+  </tr>
+  <tr>
     <th>4 layers</th>
-  </tr>
-  <tr>
-    <td><video src="https://github.com/user-attachments/assets/0a73e729-f088-420d-8108-399023dd1639" controls width="320"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/c76cc9f1-d124-4517-92aa-39d354625707" controls width="320"></video></td>
-  </tr>
-  <tr>
     <th>6 layers</th>
-    <th>8 layers</th>
   </tr>
   <tr>
-    <td><video src="https://github.com/user-attachments/assets/66f7025e-5f62-447c-9126-2504c98dd62c" controls width="320"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/956a90b0-fab8-4e55-808e-5160e3b39f67" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/e0deba0e-5dc0-4cfe-b342-73fed48d4aa7" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/dedde0cc-7db0-4e57-93b1-5a9cb75aceb3" controls width="320"></video></td>
+  </tr>
+  <tr>
+    <th>8 layers</th>
+    <th></th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/660f8ccc-dced-43d8-a6fa-85b91458cff7" controls width="320"></video></td>
+    <td></td>
   </tr>
 </table>
 
-But in math perspective, the outputs are close when measured too. Subtracting one output from the other leaves a difference this far below the enhanced speech:
+Measured against the clean original with SI-SDR (higher is closer to the original):
 
-| | Whole signal | Below 1 kHz | 1–4 kHz | Above 4 kHz |
-|---|---|---|---|---|
-| 8 vs 4 layers | 19.2 dB | 19.2 dB | 19.0 dB | 19.3 dB |
-| 8 vs 6 layers | 18.6 dB | 18.4 dB | 20.3 dB | 21.7 dB |
-| 6 vs 4 layers | 22.8 dB | 23.0 dB | 21.2 dB | 21.0 dB |
+| | SI-SDR |
+|---|---|
+| Noisy | 4.5 dB |
+| 4 layers | 16.4 dB |
+| 6 layers | 16.6 dB |
+| 8 layers | 16.7 dB |
 
-19 dB down is about 1% of the energy, so the three outputs are almost the same.
+All three gain about 12 dB, and 8 layers is only 0.3 dB better than 4 on this recording.
 
 ## Setup
 
