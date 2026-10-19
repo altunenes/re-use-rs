@@ -33,6 +33,16 @@ The same recordings before and after reuse-rs (8 layers, CPU, streaming). The sp
     <td><video src="https://github.com/user-attachments/assets/0a73e729-f088-420d-8108-399023dd1639" controls width="320"></video></td>
     <td><video src="https://github.com/user-attachments/assets/221564f6-6bcc-4c82-9e41-726d1dd076c6" controls width="320"></video></td>
   </tr>
+  <tr>
+    <td><b><a href="https://huggingface.co/datasets/JacobLinCool/VoiceBank-DEMAND-16k">VoiceBank-DEMAND</a></b></td>
+    <td><video src="https://github.com/user-attachments/assets/293ec7a3-fdee-42bb-a0eb-623ca9cae97b" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/b4cf4b52-c5ca-4aed-88c4-1f393fa6ac09" controls width="320"></video></td>
+  </tr>
+  <tr>
+    <td><b><a href="https://huggingface.co/datasets/JacobLinCool/VoiceBank-DEMAND-16k">VoiceBank-DEMAND</a></b></td>
+    <td><video src="https://github.com/user-attachments/assets/cf4e3097-1d53-42a3-9453-741ba36a5402" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/a643c0af-b3ad-4ebc-9233-4949e5c79277" controls width="320"></video></td>
+  </tr>
 </table>
 
 ## Setup
@@ -128,6 +138,26 @@ decoders. All of it is written by hand in `src/`:
 - Speed has only been measured on an Apple M3. Other platforms use the `matrixmultiply` crate instead
   of Accelerate: on the same M3 that path takes 21.4 ms per frame at 8 layers, so 4–6 layers is the
   safer choice there.
+- Some recordings are not cleaned well. In my tests these were mostly recordings where the
+  background noise also has other people talking in it:
+
+<table>
+  <tr>
+    <th>Noisy</th>
+    <th>Enhanced (reuse-rs, 8 layers, CPU)</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/d779122f-277b-4ce6-b8d3-af157e75dfe2" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/353c9289-dab6-4b72-ab1e-6280beb9af18" controls width="320"></video></td>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/f860026e-e383-463e-b90f-a61e95280a6a" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/ccad0efb-df9d-4bad-abb1-79ba12082eec" controls width="320"></video></td>
+  </tr>
+</table>
+
+If you don't need real time, for example when cleaning finished recordings, try NVIDIA's offline re-use
+model instead. see: [SpeechLens](https://github.com/faraday/SpeechLens) 
 
 ## License
 
