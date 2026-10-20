@@ -2,6 +2,22 @@ use eyre::{eyre, Result};
 use realfft::RealFftPlanner;
 use std::f32::consts::PI;
 
+/// Sample rates the model was trained on.
+pub const SAMPLE_RATES: [u32; 7] = [8000, 16000, 22050, 24000, 32000, 44100, 48000];
+
+/// `(n_fft, hop)` for `sample_rate`: a 40 ms window and a 20 ms hop, scaled from 320/160 at 8 kHz
+/// and rounded up to even sizes, as NVIDIA's inference does.
+pub fn stft_sizes(sample_rate: u32) -> Result<(usize, usize)> {
+    if !SAMPLE_RATES.contains(&sample_rate) {
+        return Err(eyre!(
+            "unsupported sample rate {sample_rate} Hz, expected one of {SAMPLE_RATES:?}"
+        ));
+    }
+    let even = |n: usize| n + n % 2;
+    let sr = sample_rate as usize;
+    Ok((even(320 * sr / 8000), even(160 * sr / 8000)))
+}
+
 /// Periodic Hann window of length `n`, like `torch.hann_window(n)`.
 pub(crate) fn hann_window(n: usize) -> Vec<f32> {
     (0..n)
