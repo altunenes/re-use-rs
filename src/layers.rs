@@ -60,6 +60,17 @@ impl StreamConv {
         self.cache.clear();
     }
 
+    /// Adds `x` to the time history without computing an output. On an empty history, `zeros`
+    /// zero frames come first.
+    pub fn push(&mut self, x: &[f32], zeros: usize) {
+        if self.cache.is_empty() {
+            for _ in 0..zeros {
+                self.cache.push_back(vec![0f32; x.len()]);
+            }
+        }
+        self.cache.push_back(x.to_vec());
+    }
+
     /// `x` is `[cin][freq]`; returns `[cout][freq_out]`.
     pub fn step(&mut self, x: &[f32]) -> Vec<f32> {
         let freq = x.len() / self.cin;

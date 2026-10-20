@@ -1,4 +1,4 @@
-//! Real-time RE-USE (nvidia/Real-time_RE-USE), one 20 ms STFT frame per step, look-ahead 0.
+//! Real-time RE-USE (nvidia/Real-time_RE-USE), one 20 ms STFT frame per step.
 
 use crate::layers::{BiMambaBlock, DenseBlock, LayerNorm, Linear, Mamba, NormAct, StreamConv};
 use crate::ops::{gemm, transpose};
@@ -136,16 +136,27 @@ pub struct Streaming {
     blocks: Vec<Block>,
     mag: Decoder,
     pha: Decoder,
+    look_ahead: usize,
+    /// Frames still to buffer before the first output.
+    waiting: usize,
 }
 
 impl Streaming {
     /// Loads the first `layers` TF-Mamba blocks (3–12) and the decoder pair trained to exit there.
-    pub fn load(path: impl AsRef<Path>, layers: usize) -> Result<Self> {
+    ///
+    /// `look_ahead` (0–2) is how many future frames the model sees: the output for frame `t`
+    /// comes out of the step that receives frame `t + look_ahead`.
+    pub fn load(path: impl AsRef<Path>, layers: usize, look_ahead: usize) -> Result<Self> {
         let w = Weights::load(path)?;
         eyre::ensure!(
             (3..=12).contains(&layers),
             "layers must be 3..=12, got {layers}"
         );
+        eyre::ensure!(
+            look_ahead <= 2,
+            "look_ahead must be 0..=2, got {look_ahead}"
+        );
+        let encoder_in = format!("dense_encoder.dense_conv_1_{}", look_ahead + 1);
         let blocks = (0..layers)
             .map(|i| {
                 Ok(Block {
@@ -156,11 +167,11 @@ impl Streaming {
             .collect::<Result<_>>()?;
         let exit = layers - 1;
         Ok(Self {
-            encoder_in: StreamConv::load(&w, "dense_encoder.dense_conv_1_1.0", 1, 1, 1)?,
+            encoder_in: StreamConv::load(&w, &format!("{encoder_in}.0"), 1, 1, 1)?,
             encoder_in_act: NormAct::load(
                 &w,
-                "dense_encoder.dense_conv_1_1.1",
-                "dense_encoder.dense_conv_1_1.2",
+                &format!("{encoder_in}.1"),
+                &format!("{encoder_in}.2"),
             )?,
             encoder_dense: DenseBlock::load(&w, "dense_encoder.dense_block")?,
             encoder_out: StreamConv::load(&w, "dense_encoder.dense_conv_2.0", 1, 0, 2)?,
@@ -176,10 +187,18 @@ impl Streaming {
                 &format!("phase_decoder_list.{exit}"),
                 &["phase_conv_r", "phase_conv_i"],
             )?,
+            look_ahead,
+            waiting: look_ahead,
         })
     }
 
+    /// Future frames the model sees (0–2).
+    pub fn look_ahead(&self) -> usize {
+        self.look_ahead
+    }
+
     pub fn reset(&mut self) {
+        self.waiting = self.look_ahead;
         self.encoder_in.reset();
         self.encoder_dense.reset();
         for b in &mut self.blocks {
@@ -190,12 +209,22 @@ impl Streaming {
     }
 
     /// One frame: log1p-compressed magnitude and phase (`bins` each) in, enhanced ones out.
-    pub fn step(&mut self, mag: &[f32], pha: &[f32]) -> (Vec<f32>, Vec<f32>) {
+    ///
+    /// The first `look_ahead` steps after loading or [`reset`](Self::reset) only buffer and
+    /// return `None`; every later step returns the frame `look_ahead` steps back.
+    pub fn step(&mut self, mag: &[f32], pha: &[f32]) -> Option<(Vec<f32>, Vec<f32>)> {
         let bins = mag.len();
         let freq_in = bins + 2;
         let mut x = vec![0f32; 2 * freq_in];
         x[..bins].copy_from_slice(mag);
         x[freq_in..freq_in + bins].copy_from_slice(pha);
+
+        // The look-ahead encoder conv starts with 2 - look_ahead zero frames instead of 2.
+        if self.waiting > 0 {
+            self.encoder_in.push(&x, 2 - self.look_ahead);
+            self.waiting -= 1;
+            return None;
+        }
 
         let mut h = self.encoder_in.step(&x);
         self.encoder_in_act.apply(&mut h);
@@ -222,6 +251,6 @@ impl Streaming {
             .zip(&pha[1])
             .map(|(r, i)| i.atan2(*r))
             .collect::<Vec<_>>();
-        (mag[..bins].to_vec(), phase[..bins].to_vec())
+        Some((mag[..bins].to_vec(), phase[..bins].to_vec()))
     }
 }
