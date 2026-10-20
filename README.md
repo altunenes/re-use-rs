@@ -8,10 +8,12 @@
 Real-time speech enhancement in plain Rust, running NVIDIA's
 [Real-time RE-USE](https://huggingface.co/nvidia/Real-time_RE-USE) model on the CPU.
 
-- Streams one 20 ms frame at a time, faster than real time on a laptop CPU (8.4–14.7 ms per frame on an Apple M3).
+- Streams one 20 ms frame at a time, faster than real time on a laptop CPU (8.4–14.7 ms per frame on an Apple M3, 16 kHz).
+- All of the model's sample rates (8, 16, 22.05, 24, 32, 44.1 and 48 kHz) and look-ahead of 0–2 frames.
 - No ONNX Runtime, no GPU, no Python. The weights load straight from NVIDIA's `model.safetensors`.
 - About 150 MB of memory.
-- Output matches a float64 PyTorch reference to 1.5e-6, as close as PyTorch's own float32 run.
+- Output matches a float64 run of NVIDIA's PyTorch model at every sample rate and look-ahead (67–112 dB
+  SNR on the waveform).
 
 ## Demo
 
@@ -100,23 +102,28 @@ curl -L -o realtime_reuse/model.safetensors \
   https://huggingface.co/nvidia/Real-time_RE-USE/resolve/main/model.safetensors
 ```
 
-Enhance a 16 kHz mono wav:
+Enhance a mono wav at 8, 16, 22.05, 24, 32, 44.1 or 48 kHz:
 
 ```sh
-cargo run --release --example enhance -- noisy.wav clean.wav 8
+cargo run --release --example enhance -- noisy.wav clean.wav 8 0
 ```
 
-The last argument is the number of Mamba layers, 3–12. Fewer layers is faster (see
-[Fewer layers](#fewer-layers)).
-Convert other audio with e.g. `ffmpeg -i in.mp4 -ac 1 -ar 16000 noisy.wav`.
+The last two arguments are the number of Mamba layers (3–12; fewer is faster, see
+[Fewer layers](#fewer-layers)) and the look-ahead (0–2 frames). Convert other audio with e.g.
+`ffmpeg -i in.mp4 -ac 1 -ar 16000 noisy.wav`.
 
 ## Library
 
 ```rust
-use reuse_rs::Denoiser;
+use reuse_rs::{Config, Denoiser};
 
+// 16 kHz, 8 layers, no look-ahead:
 let mut denoiser = Denoiser::load("realtime_reuse/model.safetensors", 8)?;
-// Feed 16 kHz mono samples in whatever chunks they arrive.
+// Or pick the sample rate and look-ahead:
+let config = Config { layers: 4, sample_rate: 48000, look_ahead: 1 };
+let mut denoiser = Denoiser::with_config("realtime_reuse/model.safetensors", config)?;
+
+// Feed mono samples in whatever chunks they arrive.
 let clean = denoiser.process(&noisy_chunk)?;
 // At the end of the stream:
 let rest = denoiser.flush()?;
@@ -128,9 +135,13 @@ layer, so fewer layers is faster: on an Apple M3, 4 layers take 8.4 ms per frame
 little between them (see [Fewer layers](#fewer-layers)), so 4 layers is a good choice when speed
 matters.
 
-`process` returns the enhanced samples that are ready, 320 at a time (20 ms), delayed by
-`Denoiser::LATENCY` (320 samples). For frame-level control, `Streaming` takes one STFT frame
-(log1p magnitude and phase, 321 bins) per call, and `audio` has the matching STFT and wav helpers.
+`process` returns the enhanced samples that are ready, one 20 ms frame at a time
+(`denoiser.frame()` samples), delayed by `denoiser.latency()` samples: 20 ms, plus 20 ms per
+look-ahead frame. Look-ahead lets the model see up to 2 future frames before it outputs a frame.
+
+For frame-level control, `Streaming` takes one STFT frame (log1p magnitude and phase) per call,
+and `audio` has the matching STFT and wav helpers (`audio::stft_sizes` gives the FFT size and hop
+for each sample rate).
 
 ## Benchmarks
 
@@ -186,8 +197,10 @@ decoders. All of it is written by hand in `src/`:
 
 ## Limitations
 
-- Only 16 kHz input and look-ahead 0 have been tested. NVIDIA's model supports 8–48 kHz and up to
-  2 frames of look-ahead.
+- Higher sample rates mean more frequency bins and more work per frame: 48 kHz is about 3 times
+  the work of 16 kHz. From the 16 kHz numbers, that is about 25 ms per 20 ms frame on an Apple M3
+  even with 4 layers, so too slow for live audio there. For live audio, resampling to 16 kHz is
+  the fast option.
 - Speed has only been measured on an Apple M3. Other platforms use the `matrixmultiply` crate instead
   of Accelerate: on the same M3 that path takes 21.4 ms per frame at 8 layers, so 4–6 layers is the
   safer choice there.
