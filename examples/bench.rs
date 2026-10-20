@@ -1,4 +1,4 @@
-//! Per-frame speed of Real-time RE-USE on the start of a 16 kHz wav.
+//! Per-frame speed of Real-time RE-USE on the start of a mono wav.
 //!
 //! cargo run --release --example bench -- <in.wav> [layers] [seconds] [model.safetensors]
 //!   e.g. -- noisy.wav 8 12
@@ -23,12 +23,12 @@ fn main() -> eyre::Result<()> {
         .unwrap_or("realtime_reuse/model.safetensors");
 
     let (wav, sr) = audio::load_wav(input)?;
-    eyre::ensure!(sr == 16000, "expected 16 kHz audio, got {sr}");
+    let (n_fft, hop) = audio::stft_sizes(sr)?;
     let wav = &wav[..((seconds * sr as f32) as usize).min(wav.len())];
-    let (mag, pha) = audio::stft(wav, 640, 320, 640)?;
+    let (mag, pha) = audio::stft(wav, n_fft, hop, n_fft)?;
     let frames = mag[0].len();
 
-    let mut stream = Streaming::load(model, layers)?;
+    let mut stream = Streaming::load(model, layers, 0)?;
     let mut times = Vec::with_capacity(frames);
     for t in 0..frames {
         let m: Vec<f32> = mag.iter().map(|row| row[t].ln_1p()).collect();
@@ -42,7 +42,7 @@ fn main() -> eyre::Result<()> {
     warm.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let median = warm[warm.len() / 2];
     println!(
-        "{layers} layers, {frames} frames: median {median:.2} ms, p95 {:.2} ms, max {:.2} ms -> {:.2}x real time",
+        "{sr} Hz, {layers} layers, {frames} frames: median {median:.2} ms, p95 {:.2} ms, max {:.2} ms -> {:.2}x real time",
         warm[warm.len() * 95 / 100],
         warm[warm.len() - 1],
         20.0 / median
