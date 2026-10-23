@@ -1,6 +1,6 @@
 [package]
 name = "reuse-rs"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["altunenes"]
 description = "Speech enhancement with NVIDIA RE-USE (Mamba) in plain Rust: real-time streaming on the CPU, and offline models on the CPU or GPU, 8–48 kHz"
