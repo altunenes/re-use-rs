@@ -180,22 +180,42 @@ cargo run --release --example bench -- noisy.wav 8 12
 
 <table>
   <tr>
+    <th colspan="2">Recording 1</th>
+  </tr>
+  <tr>
     <th>Noisy</th>
     <th>Real-time (8 layers)</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/d779122f-277b-4ce6-b8d3-af157e75dfe2" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/353c9289-dab6-4b72-ab1e-6280beb9af18" controls width="320"></video></td>
+  </tr>
+  <tr>
     <th>RE-USE</th>
     <th>RE-USE-laughter</th>
   </tr>
   <tr>
-    <td><video src="https://github.com/user-attachments/assets/d779122f-277b-4ce6-b8d3-af157e75dfe2" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/353c9289-dab6-4b72-ab1e-6280beb9af18" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/911944b2-8fc6-47cd-80e6-a8a8d21204a2" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/354a3095-9987-4989-803c-c66723f4bfa6" controls width="240"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/911944b2-8fc6-47cd-80e6-a8a8d21204a2" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/354a3095-9987-4989-803c-c66723f4bfa6" controls width="320"></video></td>
   </tr>
   <tr>
-    <td><video src="https://github.com/user-attachments/assets/f860026e-e383-463e-b90f-a61e95280a6a" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/ccad0efb-df9d-4bad-abb1-79ba12082eec" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/8b4cb539-4f5b-46ec-b31c-41e1d0769a82" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/177414e9-8b8f-4ae6-9915-d3542bb38b66" controls width="240"></video></td>
+    <th colspan="2">Recording 2</th>
+  </tr>
+  <tr>
+    <th>Noisy</th>
+    <th>Real-time (8 layers)</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/f860026e-e383-463e-b90f-a61e95280a6a" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/ccad0efb-df9d-4bad-abb1-79ba12082eec" controls width="320"></video></td>
+  </tr>
+  <tr>
+    <th>RE-USE</th>
+    <th>RE-USE-laughter</th>
+  </tr>
+  <tr>
+    <td><video src="https://github.com/user-attachments/assets/8b4cb539-4f5b-46ec-b31c-41e1d0769a82" controls width="320"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/177414e9-8b8f-4ae6-9915-d3542bb38b66" controls width="320"></video></td>
   </tr>
 </table>
 
