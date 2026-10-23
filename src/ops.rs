@@ -152,6 +152,24 @@ pub fn fast_exp(x: f32) -> f32 {
     p * f32::from_bits(((t.to_bits() as i32 - 0x4B40_0000 + 127) as u32) << 23)
 }
 
+/// [`fast_exp`] with fused multiply-adds, for `x <= 88`: fewer instructions, and rounding
+/// differs slightly.
+#[inline(always)]
+pub fn fast_exp_fma(x: f32) -> f32 {
+    let x = x.max(-87.0);
+    let t = x.mul_add(std::f32::consts::LOG2_E, 12_582_912.0);
+    let n = t - 12_582_912.0;
+    let r = n.mul_add(2.121_944_4e-4, n.mul_add(-0.693_359_4, x));
+    let mut p = 1.987_569_1e-4_f32;
+    p = p.mul_add(r, 1.398_199_9e-3);
+    p = p.mul_add(r, 8.333_452e-3);
+    p = p.mul_add(r, 4.166_579_6e-2);
+    p = p.mul_add(r, 1.666_666_5e-1);
+    p = p.mul_add(r, 0.5);
+    let p = (p * r).mul_add(r, r + 1.0);
+    p * f32::from_bits(((t.to_bits() as i32 - 0x4B40_0000 + 127) as u32) << 23)
+}
+
 /// Natural log accurate to about 1 ulp for positive normal `x` (Cephes `logf`), vectorizable.
 #[inline(always)]
 pub fn fast_ln(x: f32) -> f32 {
@@ -173,6 +191,46 @@ pub fn fast_ln(x: f32) -> f32 {
     y = y * m + 3.333_333e-1;
     let y = y * m * z - 2.121_944_4e-4 * e - 0.5 * z;
     m + y + 0.693_359_4 * e
+}
+
+/// [`fast_ln`] with fused multiply-adds.
+#[inline(always)]
+pub fn fast_ln_fma(x: f32) -> f32 {
+    let bits = x.to_bits();
+    let e = ((bits >> 23) & 0xff) as i32 - 126;
+    let m = f32::from_bits((bits & 0x007f_ffff) | 0x3f00_0000);
+    let small = m < std::f32::consts::FRAC_1_SQRT_2;
+    let e = (e - small as i32) as f32;
+    let m = if small { m + m - 1.0 } else { m - 1.0 };
+    let z = m * m;
+    let mut y = 7.037_683_6e-2_f32;
+    y = y.mul_add(m, -1.151_461e-1);
+    y = y.mul_add(m, 1.167_699_9e-1);
+    y = y.mul_add(m, -1.242_014_1e-1);
+    y = y.mul_add(m, 1.424_932_3e-1);
+    y = y.mul_add(m, -1.666_805_8e-1);
+    y = y.mul_add(m, 2.000_071_5e-1);
+    y = y.mul_add(m, -2.499_999_4e-1);
+    y = y.mul_add(m, 3.333_333e-1);
+    let y = e.mul_add(-2.121_944_4e-4, (y * m).mul_add(z, -0.5 * z));
+    e.mul_add(0.693_359_4, m + y)
+}
+
+/// [`softplus`] with fused multiply-adds.
+#[inline(always)]
+pub fn softplus_fma(x: f32) -> f32 {
+    let y = fast_exp_fma(-x.abs());
+    let u = 1.0 + y;
+    let log1p = if u == 1.0 {
+        y
+    } else {
+        fast_ln_fma(u) * y / (u - 1.0)
+    };
+    if x > 20.0 {
+        x
+    } else {
+        x.max(0.0) + log1p
+    }
 }
 
 #[inline(always)]
@@ -295,6 +353,31 @@ mod tests {
                 (x as f64).exp().ln_1p() as f32
             };
             worst = worst.max((softplus(x) - exact).abs() / exact.max(1e-3));
+            x += 0.0071;
+        }
+        assert!(worst < 1e-6, "softplus error {worst}");
+    }
+
+    #[test]
+    fn fma_variants_match_std() {
+        let mut worst = 0f32;
+        let mut x = -80.0f32;
+        while x < 0.0 {
+            worst = worst.max((fast_exp_fma(x) / x.exp() - 1.0).abs());
+            x += 0.0137;
+        }
+        assert!(worst < 1e-6, "exp error {worst}");
+        let mut worst = 0f32;
+        let mut x = 1e-6f32;
+        while x < 1e6 {
+            worst = worst.max((fast_ln_fma(x) - x.ln()).abs() / x.ln().abs().max(1.0));
+            x *= 1.0137;
+        }
+        assert!(worst < 2e-7, "ln error {worst}");
+        let mut worst = 0f32;
+        let mut x = -30.0f32;
+        while x < 30.0 {
+            worst = worst.max((softplus_fma(x) - softplus(x)).abs() / softplus(x).max(1e-3));
             x += 0.0071;
         }
         assert!(worst < 1e-6, "softplus error {worst}");

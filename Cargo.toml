@@ -1,9 +1,9 @@
 [package]
 name = "reuse-rs"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["altunenes"]
-description = "Real-time speech enhancement with NVIDIA Real-time RE-USE (Mamba), in plain Rust on the CPU, 8–48 kHz"
+description = "Speech enhancement with NVIDIA RE-USE (Mamba) in plain Rust: real-time streaming on the CPU, and offline models on the CPU or GPU, 8–48 kHz"
 repository = "https://github.com/altunenes/re-use-rs"
 license = "MIT OR Apache-2.0"
 keywords = ["speech-enhancement", "denoising", "mamba", "real-time", "audio"]
@@ -15,6 +15,34 @@ hound = "3.5"
 rayon = "1.12.0"
 realfft = "3"
 safetensors = ">=0.7, <0.9"
+
+[dependencies.burn]
+version = "0.22.1"
+default-features = false
+features = ["std", "extension"]
+optional = true
+
+[dependencies.burn-cubecl]
+version = "0.22.1"
+default-features = false
+features = ["std"]
+optional = true
+
+[dependencies.cubecl]
+version = "0.11.1"
+default-features = false
+features = ["std"]
+optional = true
+
+[features]
+# The offline model on a GPU with Burn. Enable one or more backends:
+gpu = ["dep:burn", "dep:burn-cubecl", "dep:cubecl"]
+# wgpu on whatever the system offers (Metal, Vulkan, DX12). Use this only if your hw very old and doesn't work with vulkan. For apple, use directly metal.
+wgpu = ["gpu", "burn/wgpu"]
+metal = ["gpu", "burn/metal"]
+vulkan = ["gpu", "burn/vulkan"]
+cuda = ["gpu", "burn/cuda"]
+rocm = ["gpu", "burn/rocm"]
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 matrixmultiply = "0.3"
