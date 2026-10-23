@@ -188,13 +188,13 @@ cargo run --release --example bench -- noisy.wav 8 12
   <tr>
     <td><video src="https://github.com/user-attachments/assets/d779122f-277b-4ce6-b8d3-af157e75dfe2" controls width="240"></video></td>
     <td><video src="https://github.com/user-attachments/assets/353c9289-dab6-4b72-ab1e-6280beb9af18" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/37a0bb49-da5d-4e17-82d0-3d8885ae4123" controls width="240"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/911944b2-8fc6-47cd-80e6-a8a8d21204a2" controls width="240"></video></td>
     <td><video src="https://github.com/user-attachments/assets/354a3095-9987-4989-803c-c66723f4bfa6" controls width="240"></video></td>
   </tr>
   <tr>
     <td><video src="https://github.com/user-attachments/assets/f860026e-e383-463e-b90f-a61e95280a6a" controls width="240"></video></td>
     <td><video src="https://github.com/user-attachments/assets/ccad0efb-df9d-4bad-abb1-79ba12082eec" controls width="240"></video></td>
-    <td><video src="https://github.com/user-attachments/assets/a6c43c3d-0644-4173-89fe-0ebc352693b9" controls width="240"></video></td>
+    <td><video src="https://github.com/user-attachments/assets/8b4cb539-4f5b-46ec-b31c-41e1d0769a82" controls width="240"></video></td>
     <td><video src="https://github.com/user-attachments/assets/177414e9-8b8f-4ae6-9915-d3542bb38b66" controls width="240"></video></td>
   </tr>
 </table>
